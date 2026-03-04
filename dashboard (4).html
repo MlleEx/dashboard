@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Investeringen Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0812;
+    --surface: #150d1e;
+    --surface2: #1e1430;
+    --border: #2e1d40;
+
+    /* A full family of pinks, burgundies, purples */
+    --pink-bright: #ff6eb4;       /* hot pink — headlines, accents */
+    --pink-pale: #fdc5e0;         /* blush — subtle text highlights */
+    --burgundy: #8b1a4a;          /* deep burgundy — dim bars */
+    --magenta: #e040a0;           /* magenta — badges, totals */
+    --violet: #c084fc;            /* lavender violet — allocation pcts */
+    --purple-deep: #7c3aed;       /* deep purple — bar fills */
+    --lilac: #e9d5ff;             /* pale lilac — KPI values */
+
+    --text: #f5eef8;
+    --muted: #8b7a96;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    padding: 2rem;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Dual glow blobs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 50%;
+  }
+  body::before {
+    top: -15%;
+    right: -8%;
+    width: 550px; height: 550px;
+    background: radial-gradient(ellipse, rgba(224,64,160,0.1) 0%, transparent 70%);
+  }
+  body::after {
+    bottom: -20%;
+    left: -10%;
+    width: 500px; height: 500px;
+    background: radial-gradient(ellipse, rgba(124,58,237,0.1) 0%, transparent 70%);
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* Header */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .title-block h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .title-block h1 em {
+    font-style: italic;
+    color: var(--pink-bright);
+  }
+
+  .date {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* KPI row — each card gets its own accent colour */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  .kpi {
+    background: var(--surface);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    transition: background 0.2s;
+    position: relative;
+  }
+  .kpi::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .kpi:hover { background: var(--surface2); }
+  .kpi:hover::after { opacity: 1; }
+
+  .kpi:nth-child(1)::after { background: var(--pink-bright); }
+  .kpi:nth-child(2)::after { background: var(--violet); }
+  .kpi:nth-child(3)::after { background: var(--magenta); }
+  .kpi:nth-child(4)::after { background: var(--purple-deep); }
+
+  .kpi-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .kpi-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.9rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--lilac);
+  }
+
+  .kpi-value.accent-pink    { color: var(--pink-bright); }
+  .kpi-value.accent-violet  { color: var(--violet); }
+  .kpi-value.accent-magenta { color: var(--magenta); }
+  .kpi-value.accent-purple  { color: var(--purple-deep); }
+
+  .kpi-sub { font-size: 0.7rem; color: var(--muted); }
+
+  .badge {
+    display: inline-block;
+    background: rgba(224,64,160,0.12);
+    border: 1px solid rgba(224,64,160,0.3);
+    color: var(--magenta);
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    letter-spacing: 0.05em;
+    width: fit-content;
+    margin-top: 0.2rem;
+  }
+
+  /* Two-col layout */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .card-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Positions table */
+  .positions-table { width: 100%; border-collapse: collapse; }
+  .positions-table th {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.75rem 1.25rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+  .positions-table th:not(:first-child) { text-align: right; }
+
+  .positions-table td {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.8rem;
+    border-bottom: 1px solid rgba(46,29,64,0.8);
+    vertical-align: middle;
+  }
+  .positions-table tr:last-child td { border-bottom: none; }
+  .positions-table td:not(:first-child) { text-align: right; }
+  .positions-table tr:hover td { background: var(--surface2); }
+
+  /* Each stock row gets a subtle left accent */
+  .positions-table tbody tr:nth-child(1) td:first-child { border-left: 2px solid var(--pink-bright); padding-left: calc(1.25rem - 2px); }
+  .positions-table tbody tr:nth-child(2) td:first-child { border-left: 2px solid var(--violet); padding-left: calc(1.25rem - 2px); }
+  .positions-table tbody tr:nth-child(3) td:first-child { border-left: 2px solid var(--magenta); padding-left: calc(1.25rem - 2px); }
+  .positions-table tbody tr:nth-child(4) td:first-child { border-left: 2px solid var(--purple-deep); padding-left: calc(1.25rem - 2px); }
+
+  .pos-name { font-weight: 500; color: var(--text); }
+  .pos-price { color: var(--muted); font-size: 0.72rem; }
+
+  /* Bar chart — each bar its own colour */
+  .alloc-list { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+  .alloc-item { display: flex; flex-direction: column; gap: 0.4rem; }
+  .alloc-row { display: flex; justify-content: space-between; font-size: 0.72rem; }
+  .alloc-name { color: var(--text); }
+  .alloc-pct { font-family: 'Outfit', sans-serif; }
+  .bar-track {
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s cubic-bezier(.16,1,.3,1);
+  }
+  .bar-pink    { background: linear-gradient(90deg, var(--burgundy), var(--pink-bright)); }
+  .bar-violet  { background: linear-gradient(90deg, var(--purple-deep), var(--violet)); }
+  .bar-magenta { background: linear-gradient(90deg, var(--burgundy), var(--magenta)); }
+  .bar-purple  { background: linear-gradient(90deg, #4c1d95, var(--purple-deep)); }
+
+  /* Savings card */
+  .savings-list { padding: 1.25rem; display: flex; flex-direction: column; gap: 0; }
+  .savings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+  }
+  .savings-row:last-child { border-bottom: none; }
+  .savings-label { color: var(--muted); }
+  .savings-val { color: var(--text); font-family: 'Outfit', sans-serif; }
+
+  /* Monthly contributions */
+  .contrib-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    margin: 0;
+  }
+  .contrib-cell {
+    background: var(--surface);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .contrib-label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .contrib-val { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--lilac); }
+  .contrib-val.hl-pink    { color: var(--pink-bright); }
+  .contrib-val.hl-magenta { color: var(--magenta); }
+
+  /* Live dot */
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--pink-bright);
+    box-shadow: 0 0 8px var(--pink-bright);
+    animation: pulse 2s ease-in-out infinite;
+    display: inline-block;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.75); }
+  }
+
+  /* Fade in */
+  .kpi, .card {
+    animation: fadeUp 0.5s ease both;
+  }
+  .kpi:nth-child(1) { animation-delay: 0.05s; }
+  .kpi:nth-child(2) { animation-delay: 0.1s; }
+  .kpi:nth-child(3) { animation-delay: 0.15s; }
+  .kpi:nth-child(4) { animation-delay: 0.2s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  footer {
+    text-align: center;
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    padding-top: 2rem;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(--muted);letter-spacing:0.1em;">
+  ⏳ &nbsp;Data laden vanuit Google Sheets...
+</div>
+<div class="page">
+
+  <header>
+    <div class="title-block">
+      <h1>Investeringen <em>Dashboard</em></h1>
+    </div>
+    <div style="text-align:right; display:flex; flex-direction:column; gap:0.4rem; align-items:flex-end;">
+      <span style="display:flex;align-items:center;gap:0.5rem;font-size:0.7rem;color:var(--muted);">
+        <span class="live-dot"></span> Live
+      </span>
+      <span class="date">Maart 2026</span>
+    </div>
+  </header>
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <span class="kpi-label">Portfolio waarde</span>
+      <span class="kpi-value accent-pink" id="kpi-portfolio">laden...</span>
+      <span class="kpi-sub">Huidige marktwaarde</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Totaal ingelegd</span>
+      <span class="kpi-value accent-violet" id="kpi-ingelegd">laden...</span>
+      <span class="kpi-sub">Cumulatieve inleg</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Winst</span>
+      <span class="kpi-value accent-magenta" id="kpi-winst">laden...</span>
+      <span class="badge" id="kpi-badge"></span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Totaal vermogen</span>
+      <span class="kpi-value accent-purple" id="kpi-vermogen">laden...</span>
+      <span class="kpi-sub">Portfolio + spaargeld</span>
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div class="grid2">
+
+    <!-- Positions -->
+    <div class="card" style="animation-delay:0.25s">
+      <div class="card-header">
+        <span class="card-title">Posities</span>
+        <span style="font-size:0.7rem;color:var(--pink-bright);" id="pos-total">laden...</span>
+      </div>
+      <table class="positions-table">
+        <thead>
+          <tr>
+            <th>Naam</th>
+            <th>Prijs</th>
+            <th>Stuks</th>
+            <th>Waarde</th>
+          </tr>
+        </thead>
+        <tbody id="positions-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Allocation -->
+    <div class="card" style="animation-delay:0.3s">
+      <div class="card-header">
+        <span class="card-title">Allocatie</span>
+        <span style="font-size:0.7rem;color:var(--muted);">% van portfolio</span>
+      </div>
+      <div class="alloc-list" id="alloc-list"></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom row -->
+  <div class="grid2">
+
+    <!-- Spaargeld -->
+    <div class="card" style="animation-delay:0.35s">
+      <div class="card-header">
+        <span class="card-title">Spaargeld</span>
+      </div>
+      <div class="savings-list">
+        <div class="savings-row">
+          <span class="savings-label">Spaarrekening</span>
+          <span class="savings-val" id="sp-spaar">laden...</span>
+        </div>
+        <div class="savings-row">
+          <span class="savings-label">BUX spaarrekening</span>
+          <span class="savings-val" id="sp-bux">laden...</span>
+        </div>
+        <div class="savings-row">
+          <span class="savings-label">Wijnfonds</span>
+          <span class="savings-val" id="sp-wijn">laden...</span>
+        </div>
+        <div class="savings-row" style="margin-top:0.5rem;padding-top:1rem;border-top:1px solid var(--border);border-bottom:none;">
+          <span class="savings-label" style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">Spaargeld totaal</span>
+          <span class="savings-val" id="sp-total" style="font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--pink-bright)">laden...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Maandelijkse bijdragen -->
+    <div class="card" style="animation-delay:0.4s">
+      <div class="card-header">
+        <span class="card-title">Maandelijkse bijdragen</span>
+      </div>
+      <div class="contrib-grid">
+        <div class="contrib-cell">
+          <span class="contrib-label">S&amp;P 500</span>
+          <span class="contrib-val">€800</span>
+        </div>
+        <div class="contrib-cell">
+          <span class="contrib-label">Stoxx 600</span>
+          <span class="contrib-val">€400</span>
+        </div>
+        <div class="contrib-cell" style="border-top:1px solid var(--border)">
+          <span class="contrib-label">ING</span>
+          <span class="contrib-val">€150</span>
+        </div>
+        <div class="contrib-cell" style="border-top:1px solid var(--border)">
+          <span class="contrib-label">ABN Amro</span>
+          <span class="contrib-val">€150</span>
+        </div>
+        <div class="contrib-cell" style="border-top:1px solid var(--border); grid-column: 1;">
+          <span class="contrib-label">Maandelijks totaal</span>
+          <span class="contrib-val hl-pink">€1,500</span>
+        </div>
+        <div class="contrib-cell" style="border-top:1px solid var(--border)">
+          <span class="contrib-label">Jaarlijks</span>
+          <span class="contrib-val hl-magenta">€18,000</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Projectie -->
+  <div class="card" style="animation-delay:0.45s; margin-bottom:1.5rem;">
+    <div class="card-header">
+      <span class="card-title">Groeiprojectie — 10% per jaar</span>
+      <span style="font-size:0.7rem;color:var(--muted);">Huidig vermogen + €1,500/maand</span>
+    </div>
+    <div class="proj-grid">
+
+      <div class="proj-cell">
+        <div class="proj-year" style="color:var(--violet)">10 jaar</div>
+        <div class="proj-val" style="color:var(--violet)" id="p10">€0</div>
+        <div class="proj-sub">2036</div>
+        <div class="proj-inleg" id="inleg10"></div>
+      </div>
+
+      <div class="proj-divider"></div>
+
+      <div class="proj-cell">
+        <div class="proj-year" style="color:var(--pink-bright)">20 jaar</div>
+        <div class="proj-val" style="color:var(--pink-bright)" id="p20">€0</div>
+        <div class="proj-sub">2046</div>
+        <div class="proj-inleg" id="inleg20"></div>
+      </div>
+
+      <div class="proj-divider"></div>
+
+      <div class="proj-cell">
+        <div class="proj-year" style="color:var(--magenta)">30 jaar</div>
+        <div class="proj-val" style="color:var(--magenta)" id="p30">€0</div>
+        <div class="proj-sub">2056</div>
+        <div class="proj-inleg" id="inleg30"></div>
+      </div>
+
+    </div>
+    <div style="padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:1.5rem;flex-wrap:wrap;">
+      <span style="font-size:0.65rem;color:var(--muted);">📌 Startwaarde: <span style="color:var(--text)">€20,991</span></span>
+      <span style="font-size:0.65rem;color:var(--muted);">📈 Rendement: <span style="color:var(--text)">10% p.j.</span></span>
+      <span style="font-size:0.65rem;color:var(--muted);">💸 Maandelijkse inleg: <span style="color:var(--text)">€1,500</span></span>
+      <span style="font-size:0.65rem;color:var(--muted);">⚠️ Projectie — geen garantie</span>
+    </div>
+  </div>
+
+  <style>
+    .proj-grid {
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr 1px 1fr;
+      padding: 2rem 1.5rem;
+      gap: 0;
+    }
+    .proj-divider { background: var(--border); }
+    .proj-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0 1.5rem;
+    }
+    .proj-year {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .proj-val {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.2rem;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .proj-sub {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .proj-inleg {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+    .proj-inleg span { color: var(--lilac); }
+  </style>
+
+  <script>
+    const SHEET_URL = 'https://script.google.com/macros/s/AKfycbybNaxtk4RHohpOYFtRAYbI8P3DFXEfPeYmPDmUgdP-1Z4Ug6l3VHkGKaDHXczi0Tim1A/exec';
+    const MONTHLY_CONTRIB = 1500;
+    const ANNUAL_RATE     = 0.10;
+    const MONTHLY_RATE    = ANNUAL_RATE / 12;
+
+    function fmt(n) {
+      return '€' + Math.round(n).toLocaleString('nl-NL');
+    }
+
+    function fmtDecimal(n) {
+      return '€' + Number(n).toLocaleString('nl-NL', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    function project(start, monthly, years) {
+      let v = start;
+      for (let m = 0; m < years * 12; m++) v = v * (1 + MONTHLY_RATE) + monthly;
+      return v;
+    }
+
+    function monthsToTarget(start, monthly, target) {
+      let v = start, m = 0;
+      while (v < target && m < 1200) { v = v * (1 + MONTHLY_RATE) + monthly; m++; }
+      return m;
+    }
+
+    function loadData() {
+      window.handleSheetData = function(d) {
+        const spaargeld      = (d.spaarrekening || 0) + (d.buxSpaar || 0) + (d.wijnfonds || 0);
+        const totaalVermogen = d.portfolioWaarde + spaargeld;
+        const winstPct       = Number(d.winstPct).toFixed(2);
+
+        document.getElementById('kpi-portfolio').textContent = fmt(d.portfolioWaarde);
+        document.getElementById('kpi-ingelegd').textContent  = fmt(d.totaalIngelegd);
+        document.getElementById('kpi-winst').textContent     = '+' + fmt(d.winst);
+        document.getElementById('kpi-badge').textContent     = '+' + winstPct + '%';
+        document.getElementById('kpi-vermogen').textContent  = fmt(totaalVermogen);
+
+        const posTotal = d.positions.reduce((s, p) => s + p.waarde, 0);
+        document.getElementById('pos-total').textContent = fmtDecimal(posTotal);
+
+        const tbody = document.getElementById('positions-body');
+        tbody.innerHTML = '';
+        const colours = ['var(--pink-bright)','var(--violet)','var(--magenta)','var(--purple-deep)'];
+        d.positions.forEach((p, i) => {
+          tbody.innerHTML += `
+            <tr>
+              <td style="border-left:2px solid ${colours[i]};padding-left:calc(1.25rem - 2px)">
+                <div class="pos-name">${p.name}</div>
+              </td>
+              <td class="pos-price">${fmtDecimal(p.prijs)}</td>
+              <td>${Math.round(p.aantal)}</td>
+              <td>${fmtDecimal(p.waarde)}</td>
+            </tr>`;
+        });
+
+        const allocEl    = document.getElementById('alloc-list');
+        const barClasses = ['bar-pink','bar-violet','bar-magenta','bar-purple'];
+        const pctColours = ['var(--pink-bright)','var(--violet)','var(--magenta)','var(--purple-deep)'];
+        allocEl.innerHTML = '';
+        d.positions.forEach((p, i) => {
+          const pct = ((p.waarde / posTotal) * 100).toFixed(1);
+          allocEl.innerHTML += `
+            <div class="alloc-item">
+              <div class="alloc-row">
+                <span class="alloc-name">${p.name}</span>
+                <span class="alloc-pct" style="color:${pctColours[i]}">${pct}%</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill ${barClasses[i]}" style="width:${pct}%"></div></div>
+            </div>`;
+        });
+
+        document.getElementById('sp-spaar').textContent = fmt(d.spaarrekening);
+        document.getElementById('sp-bux').textContent   = fmt(d.buxSpaar);
+        document.getElementById('sp-wijn').textContent  = fmt(d.wijnfonds);
+        document.getElementById('sp-total').textContent = fmt(spaargeld);
+
+        const start = totaalVermogen;
+        const v10   = project(start, MONTHLY_CONTRIB, 10);
+        const v20   = project(start, MONTHLY_CONTRIB, 20);
+        const v30   = project(start, MONTHLY_CONTRIB, 30);
+        const totalInlegPerYear = MONTHLY_CONTRIB * 12;
+
+        document.getElementById('p10').textContent = fmt(v10);
+        document.getElementById('p20').textContent = fmt(v20);
+        document.getElementById('p30').textContent = fmt(v30);
+        document.getElementById('inleg10').innerHTML = `Ingelegd: <span>${fmt(start + totalInlegPerYear * 10)}</span>`;
+        document.getElementById('inleg20').innerHTML = `Ingelegd: <span>${fmt(start + totalInlegPerYear * 20)}</span>`;
+        document.getElementById('inleg30').innerHTML = `Ingelegd: <span>${fmt(start + totalInlegPerYear * 30)}</span>`;
+
+        const RETIRE_TARGET = 800000;
+        const projAt10      = v10;
+        const progressPct   = Math.min(100, (projAt10 / RETIRE_TARGET) * 100).toFixed(1);
+        const naturalMonths = monthsToTarget(start, MONTHLY_CONTRIB, RETIRE_TARGET);
+        const naturalYears  = Math.floor(naturalMonths / 12);
+        const naturalRem    = naturalMonths % 12;
+
+        document.getElementById('retire-proj10').textContent    = fmt(projAt10);
+        document.getElementById('retire-shortfall').textContent = 'tekort: ' + fmt(Math.max(0, RETIRE_TARGET - projAt10));
+        document.getElementById('retire-natural').textContent   = `${naturalYears}j ${naturalRem}m`;
+        document.getElementById('retire-natural-yr').textContent = `~${new Date().getFullYear() + naturalYears}`;
+        document.getElementById('progress-fill-el').style.width = progressPct + '%';
+        document.getElementById('progress-pct').textContent     = progressPct + '% over 10 jaar';
+        document.getElementById('progress-now').textContent     = 'Nu: ' + fmt(start);
+        document.getElementById('progress-proj').textContent    = 'Projectie 10jr: ' + fmt(projAt10);
+
+        document.getElementById('loading-overlay').style.display = 'none';
+      };
+
+      // Use fetch with no-cors won't work, so use async fetch directly - works from https
+      fetch(SHEET_URL)
+        .then(r => r.json())
+        .then(d => window.handleSheetData(d))
+        .catch(() => {
+          // Fallback: try JSONP
+          const script = document.createElement('script');
+          script.src = SHEET_URL + '?callback=handleSheetData';
+          document.head.appendChild(script);
+        });
+    }
+
+    // ── Countdown (runs independently) ─────────────────────────
+    const retireDate = new Date();
+    retireDate.setFullYear(retireDate.getFullYear() + 10);
+
+    function updateCountdown() {
+      const diff = retireDate - new Date();
+      if (diff <= 0) return;
+      const totalDays = Math.floor(diff / 86400000);
+      const years     = Math.floor(totalDays / 365);
+      const rem       = totalDays - years * 365;
+      const months    = Math.floor(rem / 30);
+      const days      = rem - months * 30;
+      const hours     = Math.floor((diff % 86400000) / 3600000);
+      document.getElementById('cd-years').textContent  = years;
+      document.getElementById('cd-months').textContent = months;
+      document.getElementById('cd-days').textContent   = days;
+      document.getElementById('cd-hours').textContent  = hours;
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 60000);
+    loadData();
+  </script>
+
+  <footer>Data gesynchroniseerd vanuit Google Sheets &nbsp;·&nbsp; BUX Portfolio</footer>
+
+  <!-- Pensioen Tracker -->
+  <div class="card" style="animation-delay:0.5s; margin-bottom:1.5rem; margin-top:-1rem; order: -1;">
+  </div>
+
+  <style>
+    .retire-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    .retire-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top right, rgba(255,110,180,0.06) 0%, transparent 60%),
+                  radial-gradient(ellipse at bottom left, rgba(124,58,237,0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .retire-top {
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr 1px 1fr;
+      padding: 2rem 1.5rem;
+      gap: 0;
+    }
+    .retire-divider { background: var(--border); }
+    .retire-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0 1.5rem;
+      text-align: center;
+    }
+    .retire-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .retire-val {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .retire-sub { font-size: 0.65rem; color: var(--muted); }
+
+    /* Countdown */
+    .countdown-bar {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .countdown-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: center;
+    }
+    .countdown-units {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .countdown-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      min-width: 70px;
+    }
+    .countdown-num {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.8rem;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .countdown-unit-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .countdown-sep {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.8rem;
+      color: var(--border);
+      line-height: 1;
+      align-self: flex-start;
+      margin-top: 0;
+    }
+
+    /* Progress bar */
+    .progress-section {
+      border-top: 1px solid var(--border);
+      padding: 1.25rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+    }
+    .progress-track {
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--purple-deep), var(--pink-bright));
+      transition: width 1.5s cubic-bezier(.16,1,.3,1);
+    }
+
+    .retire-footer {
+      border-top: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+  </style>
+
+  <script>
+    // ── Retirement calc ──────────────────────────────────────────
+    const RETIRE_TARGET   = 800000;   // €800k (6% rule → €4k/mo)
+    const RETIRE_MONTHLY  = 4000;
+    const CURRENT_VALUE   = 20991;
+    const MONTHLY_CONTRIB = 1500;
+    const ANNUAL_RATE     = 0.10;
+    const MONTHLY_RATE    = ANNUAL_RATE / 12;
+
+    // How many months to hit target at current contrib?
+    function monthsToTarget(start, monthly, target) {
+      let v = start, m = 0;
+      while (v < target && m < 1200) { v = v * (1 + MONTHLY_RATE) + monthly; m++; }
+      return m;
+    }
+
+    // Required monthly to hit target in exactly N months
+    function requiredMonthly(start, months, target) {
+      // FV = start*(1+r)^n + pmt*((1+r)^n - 1)/r  →  solve for pmt
+      const growth = Math.pow(1 + MONTHLY_RATE, months);
+      return (target - start * growth) / ((growth - 1) / MONTHLY_RATE);
+    }
+
+    const TARGET_YEARS  = 10;
+    const TARGET_MONTHS = TARGET_YEARS * 12;
+    const reqMonthly    = Math.ceil(requiredMonthly(CURRENT_VALUE, TARGET_MONTHS, RETIRE_TARGET));
+    const naturalMonths = monthsToTarget(CURRENT_VALUE, MONTHLY_CONTRIB, RETIRE_TARGET);
+    const naturalYears  = Math.floor(naturalMonths / 12);
+    const naturalRem    = naturalMonths % 12;
+
+    // Countdown to 10-year retirement date
+    const retireDate = new Date();
+    retireDate.setFullYear(retireDate.getFullYear() + TARGET_YEARS);
+
+    function updateCountdown() {
+      const now  = new Date();
+      const diff = retireDate - now;
+      if (diff <= 0) {
+        document.getElementById('cd-years').textContent  = '0';
+        document.getElementById('cd-months').textContent = '0';
+        document.getElementById('cd-days').textContent   = '0';
+        document.getElementById('cd-hours').textContent  = '0';
+        return;
+      }
+      const totalDays  = Math.floor(diff / 86400000);
+      const years      = Math.floor(totalDays / 365);
+      const rem        = totalDays - years * 365;
+      const months     = Math.floor(rem / 30);
+      const days       = rem - months * 30;
+      const hours      = Math.floor((diff % 86400000) / 3600000);
+
+      document.getElementById('cd-years').textContent  = years;
+      document.getElementById('cd-months').textContent = months;
+      document.getElementById('cd-days').textContent   = days;
+      document.getElementById('cd-hours').textContent  = hours;
+    }
+
+    // Progress toward target at 10yr projection
+    const projAt10 = (function(){
+      let v = CURRENT_VALUE;
+      for (let m = 0; m < TARGET_MONTHS; m++) v = v * (1 + MONTHLY_RATE) + MONTHLY_CONTRIB;
+      return v;
+    })();
+    const progressPct = Math.min(100, (projAt10 / RETIRE_TARGET) * 100).toFixed(1);
+
+    // Render retirement card
+    const retireYr = retireDate.getFullYear();
+    document.write(`
+      <div class="retire-card" style="animation-delay:0.5s; margin-bottom:1.5rem;">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--pink-bright);letter-spacing:0.14em;">🎯 Pensioen Tracker — €4,000/maand</span>
+          <span style="font-size:0.7rem;color:var(--muted);">Doel: ${retireYr}</span>
+        </div>
+
+        <div class="retire-top">
+          <div class="retire-stat">
+            <span class="retire-label">Benodigde portefeuille</span>
+            <span class="retire-val" style="color:var(--lilac)">€800,000</span>
+            <span class="retire-sub">6% regel · €4.000/maand</span>
+          </div>
+          <div class="retire-divider"></div>
+          <div class="retire-stat">
+            <span class="retire-label">Waarde over 10 jaar</span>
+            <span class="retire-val" style="color:var(--pink-bright)" id="retire-proj10">laden...</span>
+            <span class="retire-sub" id="retire-shortfall"></span>
+          </div>
+          <div class="retire-divider"></div>
+          <div class="retire-stat">
+            <span class="retire-label">Bij €1,500/maand klaar in</span>
+            <span class="retire-val" style="color:var(--violet)" id="retire-natural">–</span>
+            <span class="retire-sub" id="retire-natural-yr"></span>
+          </div>
+        </div>
+
+        <div class="progress-section">
+          <div class="progress-row">
+            <span style="color:var(--muted)">Voortgang naar €800k bij €1.500/maand</span>
+            <span style="color:var(--pink-bright)" id="progress-pct"></span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill-el" style="width:0%"></div>
+          </div>
+          <div class="progress-row" style="margin-top:0.2rem;">
+            <span style="color:var(--muted);font-size:0.65rem;" id="progress-now"></span>
+            <span style="color:var(--lilac);font-size:0.65rem;" id="progress-proj"></span>
+            <span style="color:var(--muted);font-size:0.65rem;">Doel: €800,000</span>
+          </div>
+        </div>
+
+        <div class="countdown-bar">
+          <div class="countdown-label">⏳ Aftellen naar ${retireYr}</div>
+          <div class="countdown-units">
+            <div class="countdown-unit">
+              <span class="countdown-num" style="color:var(--pink-bright)" id="cd-years">–</span>
+              <span class="countdown-unit-label">Jaren</span>
+            </div>
+            <div class="countdown-sep">·</div>
+            <div class="countdown-unit">
+              <span class="countdown-num" style="color:var(--violet)" id="cd-months">–</span>
+              <span class="countdown-unit-label">Maanden</span>
+            </div>
+            <div class="countdown-sep">·</div>
+            <div class="countdown-unit">
+              <span class="countdown-num" style="color:var(--magenta)" id="cd-days">–</span>
+              <span class="countdown-unit-label">Dagen</span>
+            </div>
+            <div class="countdown-sep">·</div>
+            <div class="countdown-unit">
+              <span class="countdown-num" style="color:var(--lilac)" id="cd-hours">–</span>
+              <span class="countdown-unit-label">Uren</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="retire-footer">
+          <span style="font-size:0.65rem;color:var(--muted);">📌 6% regel: onttrekkingsratio met passief inkomen</span>
+          <span style="font-size:0.65rem;color:var(--muted);">💸 Maandelijkse inleg: <span style="color:var(--text)">€1,500</span></span>
+          <span style="font-size:0.65rem;color:var(--muted);">⚠️ Projectie — geen garantie</span>
+        </div>
+      </div>
+    `);
+
+    updateCountdown();
+    setInterval(updateCountdown, 60000);
+  </script>
+
+  <footer>Data gesynchroniseerd vanuit Google Sheets &nbsp;·&nbsp; BUX Portfolio</footer>
+
+</div>
+</body>
+</html>
